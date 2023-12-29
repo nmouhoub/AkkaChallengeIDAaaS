@@ -53,7 +53,7 @@ public class Coordinator extends AbstractActor {
   @Override
   public void preStart() {
 	log.info("Coordinator has started: {}", getSelf().path());
-	cluster.join(cluster.selfAddress());
+	//cluster.join(cluster.selfAddress());
     cluster.subscribe(getSelf(), ClusterEvent.initialStateAsEvents(), MemberEvent.class);
   }
 
@@ -93,7 +93,8 @@ public class Coordinator extends AbstractActor {
       }
 
       if (tasks.isEmpty() && workers.isEmpty()) {
-    	  getContext().system().terminate(); 
+    	  //getContext().system().terminate(); 
+    	  getContext().actorSelection("/user/*").tell(new TerminateMessage(), ActorRef.noSender());
       }
   }
  

@@ -19,7 +19,8 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import akka.actor.AbstractActor;
-import akka.actor.ActorRef;
+//import akka.actor.ActorRef;
+import akka.actor.ActorSelection;
 import akka.actor.Props;
 import akka.cluster.Cluster;
 import akka.cluster.ClusterEvent;
@@ -33,28 +34,29 @@ import akka.event.LoggingAdapter;
 */
 public class Worker extends AbstractActor {
 
-  private ActorRef coordinator;
+  //private ActorRef coordinator;
+  ActorSelection coordinator = getContext().actorSelection("/user/coordinator");
 	
   LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
-  Cluster cluster = Cluster.get(getContext().getSystem());
+  //Cluster cluster = Cluster.get(getContext().getSystem());
   
-  public Worker(ActorRef coordinator) {
+  /*public Worker(ActorRef coordinator) {
 	this.coordinator = coordinator;
-  }
+  }*/
 
   @Override
   public void preStart() {
 	log.info("Worker has started: {}", getSelf().path());
-	cluster.join(cluster.selfAddress());
-    cluster.subscribe(getSelf(), ClusterEvent.initialStateAsEvents(), MemberEvent.class);
-    coordinator.tell(new RegistrationMessage(getSelf()), getSelf());
+	//cluster.join(cluster.selfAddress());
+    //cluster.subscribe(getSelf(), ClusterEvent.initialStateAsEvents(), MemberEvent.class);
+	coordinator.tell(new RegistrationMessage(getSelf()), getSelf());
     log.info("Worker send a registration message: {}", getSelf());
   }
 
   @Override
   public void postStop() {
 	log.info("Worker has finished: {}", getSelf().path());
-    cluster.unsubscribe(getSelf());
+    //cluster.unsubscribe(getSelf());
   }
   
   @Override
@@ -68,6 +70,10 @@ public class Worker extends AbstractActor {
                   log.info("Worker send a result message: {}", getSelf());
                   coordinator.tell(new RegistrationMessage(getSelf()), getSelf());
                   log.info("Worker send a registration message: {}", getSelf());
+              })
+    		  .match(TerminateMessage.class, terminate -> {
+                   log.info("Worker received a termination message: {}", getSelf());
+                   getContext().stop(getSelf());
               })
               .build();
   }
@@ -93,8 +99,8 @@ public class Worker extends AbstractActor {
       }
   }
 
-  public static Props props(ActorRef coordinator) {
-      return Props.create(Worker.class, () -> new Worker(coordinator));
+  public static Props props() {
+      return Props.create(Worker.class);
   }
   
 }

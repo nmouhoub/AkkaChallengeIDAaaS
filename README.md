@@ -28,10 +28,10 @@ mvn test
 
 ## Run the program 
 
-For running the program, just type the following command in the main directory:
+For running the program, just type the following command in the main directory by specifying the role "master" or "slave":
 
 ```
-java -jar target/IDAaaS-0.0.1-SNAPSHOT-jar-with-dependencies.jar
+java -jar target/IDAaaS-0.0.1-SNAPSHOT-jar-with-dependencies.jar <role>
 ```
 
 ## Clean the program
@@ -58,7 +58,7 @@ Apache License Version 2.0
 
 ## Version
 
-1.0
+2.0
 
 ## Author
 

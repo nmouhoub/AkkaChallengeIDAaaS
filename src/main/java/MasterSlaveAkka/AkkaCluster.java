@@ -16,8 +16,8 @@
 package MasterSlaveAkka;
 
 import java.io.File;
-import java.util.Scanner;
-import akka.actor.ActorRef;
+//import java.util.Scanner;
+//import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 
 /** 
@@ -25,6 +25,7 @@ import akka.actor.ActorSystem;
 */
 public class AkkaCluster {
 
+	/*
     public static void main(String[] args) {
     	
         int numberOfWorkers = 2; 
@@ -43,5 +44,19 @@ public class AkkaCluster {
             System.err.println("Entrée invalide ! Veuillez saisir un nombre entier !");
         }
         scanner.close();
+    }*/
+	
+	public static void main(String[] args) {
+		String role = args[0];
+        ActorSystem system = ActorSystem.create("ClusterSystem");
+        if (role.equals("master")) {
+        	 File directoryPath = new File("src/main/resources/files");
+             String filesPath[] = directoryPath.list();
+        	 system.actorOf(Coordinator.props(filesPath), "coordinator");  	 
+        } else if (role.equals("slave")) {
+        	system.actorOf(Worker.props(), "worker");
+        } else {
+            System.err.println("Rôle invalide !");
+        }
     }
 }
