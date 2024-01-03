@@ -31,7 +31,7 @@ mvn test
 For running the program, just type the following command in the main directory by specifying the role "master" or "slave":
 
 ```
-java -jar target/IDAaaS-0.0.1-SNAPSHOT-jar-with-dependencies.jar <role>
+java -Dconfig.file=src/main/resources/<role>.conf -jar target/IDAaaS-0.0.1-SNAPSHOT-jar-with-dependencies.jar <role>
 ```
 
 ## Clean the program
