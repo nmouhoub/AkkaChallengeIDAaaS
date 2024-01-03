@@ -23,13 +23,20 @@ import java.io.Serializable;
 public class ResultMessage implements Serializable {
 	
     private static final long serialVersionUID = 5484429890024039364L;
-	private double result;
+	private double sum;
+	private int size;
 
-    public ResultMessage(double result) {
-        this.result = result;
+    public ResultMessage(double sum, int size) {
+        this.sum = sum;
+        this.size = size;
+        
     }
 
-    public double getResult() {
-        return result;
+    public double getSum() {
+        return sum;
+    }
+    
+    public int getSize() {
+        return size;
     }
 }

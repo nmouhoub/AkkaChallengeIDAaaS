@@ -19,7 +19,6 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import akka.actor.AbstractActor;
-//import akka.actor.ActorRef;
 import akka.actor.ActorSelection;
 import akka.actor.Props;
 import akka.cluster.Cluster;
@@ -34,39 +33,36 @@ import akka.event.LoggingAdapter;
 */
 public class Worker extends AbstractActor {
 
-  //private ActorRef coordinator;
-  ActorSelection coordinator = getContext().actorSelection("/user/coordinator");
-	
-  LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
-  //Cluster cluster = Cluster.get(getContext().getSystem());
-  
-  /*public Worker(ActorRef coordinator) {
-	this.coordinator = coordinator;
-  }*/
+  ActorSelection coordinator = getContext().actorSelection("akka://ClusterSystem@127.0.0.1:2551/user/coordinator");
 
+  
+  LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
+  Cluster cluster = Cluster.get(getContext().getSystem());
+  
   @Override
   public void preStart() {
 	log.info("Worker has started: {}", getSelf().path());
-	//cluster.join(cluster.selfAddress());
-    //cluster.subscribe(getSelf(), ClusterEvent.initialStateAsEvents(), MemberEvent.class);
+    cluster.subscribe(getSelf(), ClusterEvent.initialStateAsEvents(), MemberEvent.class);
 	coordinator.tell(new RegistrationMessage(getSelf()), getSelf());
     log.info("Worker send a registration message: {}", getSelf());
   }
 
   @Override
   public void postStop() {
+	cluster.unsubscribe(getSelf());
 	log.info("Worker has finished: {}", getSelf().path());
-    //cluster.unsubscribe(getSelf());
   }
   
   @Override
   public Receive createReceive() {
       return receiveBuilder()
-    		  .match(MemberUp.class,memberUp -> {log.info("Worker is up: {}", memberUp.member().address());})
+    		  .match(MemberUp.class,memberUp -> {
+    			  log.info("Worker is up: {}", memberUp.member().address());
+    			  })
     		  .match(TaskMessage.class, task -> {
     			  log.info("Worker receive a task message: {}", getSelf());
-                  double result = calculateAverage(task.getFilePath());
-                  coordinator.tell(new ResultMessage(result), getSelf());
+                  Number[] result = calculateResult(task.getFilePath());
+                  coordinator.tell(new ResultMessage(result[0].doubleValue(), result[1].intValue()), getSelf());
                   log.info("Worker send a result message: {}", getSelf());
                   coordinator.tell(new RegistrationMessage(getSelf()), getSelf());
                   log.info("Worker send a registration message: {}", getSelf());
@@ -78,7 +74,8 @@ public class Worker extends AbstractActor {
               .build();
   }
   
-  private double calculateAverage(String filePath) throws IOException {
+  private Number[] calculateResult(String filePath) throws IOException {
+	  Number[] result = new Number[2];
       try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
           String line;
           double sum = 0.0;
@@ -89,13 +86,15 @@ public class Worker extends AbstractActor {
                   sum += value;
                   count++;
               } catch (NumberFormatException e) {
-                  System.err.println("Ignorer une valeur invalide dans cette ligne: " + line);
+                  System.err.println("Ignore an invalid value in this line: " + line);
               }
           }
           if (count == 0) {
-              throw new IllegalArgumentException("Aucune valeur valide trouvée dans le fichier");
-          }
-          return sum / count;
+              throw new IllegalArgumentException("No valid value found in the file");
+          } 
+          result[0] = sum;   
+          result[1] = count;
+          return result;
       }
   }
 

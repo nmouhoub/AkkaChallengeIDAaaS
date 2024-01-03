@@ -15,9 +15,7 @@
  */
 package MasterSlaveAkka;
 
-import java.util.ArrayList;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Queue;
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
@@ -36,8 +34,9 @@ public class Coordinator extends AbstractActor {
 	
   private Queue<ActorRef> workers = new LinkedList<>();
   private Queue<String> tasks = new LinkedList<>();
-  private List<Double> results = new ArrayList<>();
   private int totalTasks = 0;
+  private int totalResults = 0;
+  private int sizeResults = 0;
   private double sumResults = 0.0;
 	
   LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
@@ -46,14 +45,13 @@ public class Coordinator extends AbstractActor {
   public Coordinator(String[] filesPath) {
 	  for(int i=0; i < filesPath.length; i++) {
 	         tasks.add("src/main/resources/files/" + filesPath[i]);
-	         totalTasks += 1; 
+	         totalTasks++; 
 	  }
   }
 
   @Override
   public void preStart() {
 	log.info("Coordinator has started: {}", getSelf().path());
-	//cluster.join(cluster.selfAddress());
     cluster.subscribe(getSelf(), ClusterEvent.initialStateAsEvents(), MemberEvent.class);
   }
 
@@ -61,25 +59,26 @@ public class Coordinator extends AbstractActor {
   public void postStop() {
 	log.info("Coordinator has finished: {}", getSelf().path());
     cluster.unsubscribe(getSelf());
-    for (double value : results) {
-    	sumResults += value;
-    } 
-    double finalResult = sumResults / totalTasks;
-    System.out.println("Résultat final : " + finalResult);
+    double finalResult = sumResults / sizeResults;
+    System.out.println("Final result : " + finalResult);
   }
   
   @Override
   public Receive createReceive() {
       return receiveBuilder()
-    		  .match(MemberUp.class,memberUp -> {log.info("Coordinator is up: {}", memberUp.member().address());})
+    		  .match(MemberUp.class,memberUp -> {
+    			  log.info("Coordinator is up: {}", memberUp.member().address());
+    		  })
     		  .match(RegistrationMessage.class, registration -> {
     			  log.info("Coordinator receive a registration message: {}", getSelf());
                   workers.add(registration.getWorker());
                   sendTask();
               })
               .match(ResultMessage.class, result -> {
-                  results.add(result.getResult());
-                  sendTask();
+            	  log.info("Coordinator receive a result message: {}", getSelf());
+            	  totalResults++;
+            	  sumResults += result.getSum();
+            	  sizeResults += result.getSize();
               })
               .build();
   }
@@ -92,9 +91,13 @@ public class Coordinator extends AbstractActor {
           log.info("Coordinator send a task message: {}", getSelf());
       }
 
-      if (tasks.isEmpty() && workers.isEmpty()) {
-    	  //getContext().system().terminate(); 
-    	  getContext().actorSelection("/user/*").tell(new TerminateMessage(), ActorRef.noSender());
+      if (tasks.isEmpty() && (totalTasks == totalResults)) {
+          while (!workers.isEmpty()) {
+              ActorRef worker = workers.poll();
+              worker.tell(new TerminateMessage(), getSelf());
+              log.info("Coordinator send a termination message: {}", getSelf());
+          }
+    	  getContext().stop(getSelf());
       }
   }
  
